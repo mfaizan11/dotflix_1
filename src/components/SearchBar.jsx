@@ -12,19 +12,20 @@ function SearchBar({ onSearch, loading }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="mb-8 flex items-center gap-3 max-w-2xl mx-auto"
+      className="flex items-center gap-3 w-full max-w-4xl mx-auto"
     >
       <input
         type="text"
         value={query}
-        placeholder="🔍 Search for movies, TV shows, or episodes..."
+        placeholder="🔍 Search for movies, TV shows..."
         onChange={(e) => setQuery(e.target.value)}
-        className="flex-1 p-3 rounded-lg bg-gray-800/70 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="flex-1 p-3 rounded-lg bg-gray-800/70 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
         disabled={loading}
+        autoFocus
       />
       <button
         type="submit"
-        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold disabled:bg-gray-500"
+        className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold disabled:bg-gray-500"
         disabled={loading}
       >
         Search
