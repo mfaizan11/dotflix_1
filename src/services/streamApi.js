@@ -1,4 +1,4 @@
-const STREAM_SERVER_URL = "http://192.168.18.108:5000/geturl";
+const STREAM_SERVER_URL = "https://dotflix.onrender.com/geturl";
 
 export async function sniffStream(embedUrl, signal) {
   try {
