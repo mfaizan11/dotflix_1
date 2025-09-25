@@ -35,5 +35,24 @@ export const getSeasonDetails = (tvId, seasonNumber) => {
 };
 
 export const getTrendingMedia = () => {
-  return fetchFromTMDb(`trending/all/day?api_key=${API_KEY}&language=en-US`);
+  // Changed from /day to /week
+  return fetchFromTMDb(`trending/all/week?api_key=${API_KEY}&language=en-US`);
+};
+
+export const getTopRatedMovies = () => {
+  // Changed from movie/top_rated to trending/movie/week for a weekly list
+  return fetchFromTMDb(`trending/movie/week?api_key=${API_KEY}&language=en-US`);
+};
+
+export const getTopRatedShows = () => {
+  // Changed from tv/top_rated to trending/tv/week for a weekly list
+  return fetchFromTMDb(`trending/tv/week?api_key=${API_KEY}&language=en-US`);
+};
+
+// Genre IDs can be found on the TMDB website. Examples:
+// Action: 28, Comedy: 35, Horror: 27, Sci-Fi: 878
+export const getMediaByGenre = (genreId) => {
+  return fetchFromTMDb(
+    `discover/movie?api_key=${API_KEY}&with_genres=${genreId}&language=en-US&sort_by=popularity.desc`
+  );
 };

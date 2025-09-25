@@ -52,7 +52,7 @@ function Hero() {
 
     const autoplay = setInterval(() => {
       emblaApi.scrollNext();
-    }, 7000);
+    }, 5000);
 
     return () => {
       emblaApi.off("select", onSelect);
@@ -70,7 +70,7 @@ function Hero() {
 
   return (
     <div
-      className="relative h-screen w-full overflow-hidden cursor-grab select-none"
+      className="relative h-[90vh] md:h-screen w-full overflow-hidden cursor-grab select-none"
       ref={emblaRef}
     >
       <div className="flex h-full">
@@ -140,7 +140,7 @@ function Hero() {
             onClick={() => emblaApi && emblaApi.scrollTo(index)}
             className={`w-3 h-3 rounded-full transition-all ${
               currentIndex === index
-                ? "bg-white"
+                ? "!bg-white"
                 : "bg-white/40 hover:bg-white/60"
             }`}
             aria-label={`Go to slide ${index + 1}`}

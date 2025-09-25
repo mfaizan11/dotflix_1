@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { createSlug } from "../utils/slug";
+import RatingBadge from "./RatingBadge";
 
 function ResultsGrid({ results }) {
   return (
@@ -13,6 +14,11 @@ function ResultsGrid({ results }) {
             key={r.id}
           >
             <div className="relative bg-gray-800/40 rounded-lg overflow-hidden shadow-lg hover:scale-105 transition transform cursor-pointer">
+              {/* Rating Badge - positioned at top-left */}
+              <div className="absolute bottom-13 left-0 z-10">
+                <RatingBadge rating={r.vote_average} />
+              </div>
+
               {/* Poster */}
               {r.poster_path ? (
                 <img
@@ -28,30 +34,38 @@ function ResultsGrid({ results }) {
 
               {/* Metadata overlay */}
               <div className="absolute bottom-0 w-full bg-black/80 p-2 text-xs sm:text-sm">
-                <h3 className="font-semibold truncate">{r.title || r.name}</h3>
+                <div className="flex items-end gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold truncate">
+                      {r.title || r.name}
+                    </h3>
 
-                <div className="flex items-center justify-between text-gray-300 gap-x-2">
-                  {/* Year (movie: release_date | tv: first_air_date) */}
-                  {(r.release_date || r.first_air_date) && (
-                    <span>
-                      {new Date(
-                        r.release_date || r.first_air_date
-                      ).getFullYear()}
-                    </span>
-                  )}
+                    <div className="flex items-center justify-between text-gray-300 gap-x-2">
+                      {/* Year (movie: release_date | tv: first_air_date) */}
+                      {(r.release_date || r.first_air_date) && (
+                        <span>
+                          {new Date(
+                            r.release_date || r.first_air_date
+                          ).getFullYear()}
+                        </span>
+                      )}
 
-                  {/* Runtime (only for movies usually) */}
-                  {r.runtime && <span>{r.runtime} min</span>}
+                      {/* Runtime (only for movies usually) */}
+                      {r.runtime && <span>{r.runtime} min</span>}
 
-                  {/* Genres */}
-                  {r.genres && r.genres.length > 0 && (
-                    <span className="truncate">
-                      {r.genres.map((g) => g.name).join(", ")}
-                    </span>
-                  )}
+                      {/* Genres */}
+                      {r.genres && r.genres.length > 0 && (
+                        <span className="truncate">
+                          {r.genres.map((g) => g.name).join(", ")}
+                        </span>
+                      )}
 
-                  {/* Media type */}
-                  <span className="italic text-gray-400">{r.media_type}</span>
+                      {/* Media type */}
+                      <span className="italic text-gray-400">
+                        {r.media_type}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

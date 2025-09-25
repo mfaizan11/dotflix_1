@@ -44,19 +44,20 @@ The content is organized as follows:
 eslint.config.js
 index.html
 package.json
-public/vite.svg
 README.md
 src/App.jsx
-src/assets/react.svg
 src/components/Header.jsx
 src/components/Hero.jsx
 src/components/Loader.jsx
+src/components/MediaRow.jsx
 src/components/MovieDetails.jsx
+src/components/RatingBadge.jsx
 src/components/ResultsGrid.jsx
 src/components/SearchBar.jsx
 src/components/TVShowDetails.jsx
 src/components/VideoPlayer.jsx
 src/index.css
+src/layouts/MainLayout.jsx
 src/main.jsx
 src/pages/DetailsPage.jsx
 src/pages/Home.jsx
@@ -71,47 +72,334 @@ vite.config.js
 <files>
 This section contains the contents of the repository's files.
 
-<file path="src/pages/SearchPage.jsx">
-import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
-import ResultsGrid from "../components/ResultsGrid";
-import { searchMedia } from "../services/tmbdApi";
-import Loader from "../components/Loader";
+<file path="src/components/MediaRow.jsx">
+import React, { useState, useEffect, useRef, useCallback, memo } from "react";
+import { Link } from "react-router-dom";
+import { createSlug } from "../utils/slug";
+import Loader from "./Loader";
+import RatingBadge from "./RatingBadge";
 
-function SearchPage() {
-  const [searchParams] = useSearchParams();
-  const query = searchParams.get("q");
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!query) return;
-
-    const handleSearch = async () => {
-      setLoading(true);
-      setResults([]);
-      const data = await searchMedia(query);
-      setResults(data?.results || []);
-      setLoading(false);
-    };
-
-    handleSearch();
-  }, [query]);
+// Memoized MediaItem component to prevent unnecessary re-renders
+const MediaItem = memo(({ item, media_type }) => {
+  const handleImageError = (e) => {
+    e.target.style.display = "none";
+    e.target.nextSibling.style.display = "flex";
+  };
 
   return (
-    <div className="pt-24 p-6 md:p-12 bg-black min-h-screen text-white">
-      <h1 className="text-2xl font-bold mb-6">Search results for: "{query}"</h1>
-      {loading && <Loader />}
-      {results.length > 0 ? (
-        <ResultsGrid results={results} />
+    <Link
+      to={`/${item.media_type || media_type}/${createSlug(
+        item.id,
+        item.title || item.name
+      )}`}
+      className="flex-shrink-0 w-48"
+      draggable={false}
+    >
+      <div className="bg-gray-800/40 rounded-lg overflow-hidden shadow-lg hover:scale-105 transition transform duration-300 cursor-pointer group">
+        <div className="relative">
+          {item.poster_path ? (
+            <>
+              <img
+                src={`https://image.tmdb.org/t/p/w300${item.poster_path}`}
+                alt={item.title || item.name}
+                className="w-full h-64 object-cover"
+                loading="lazy"
+                onError={handleImageError}
+                draggable={false}
+              />
+              <div className="w-full h-64 bg-gray-700 items-center justify-center text-gray-400 text-xs hidden">
+                No Image
+              </div>
+            </>
+          ) : (
+            <div className="w-full h-64 bg-gray-700 flex items-center justify-center text-gray-400 text-xs">
+              No Image
+            </div>
+          )}
+          <RatingBadge rating={item.vote_average} />
+        </div>
+        <div className="p-3">
+          <h3 className="font-semibold truncate text-sm text-white hover:text-red-400 transition-colors">
+            {item.title || item.name}
+          </h3>
+        </div>
+      </div>
+    </Link>
+  );
+});
+
+MediaItem.displayName = "MediaItem";
+
+function MediaRow({ title, fetchData, media_type }) {
+  const [media, setMedia] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
+  const scrollContainerRef = useRef(null);
+  const dragStartRef = useRef({ x: 0, scrollLeft: 0 });
+
+  // Memoized fetch function to prevent unnecessary re-renders
+  const loadMedia = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await fetchData();
+      if (data?.results) {
+        setMedia(data.results.slice(0, 10));
+      }
+    } catch (error) {
+      console.error("Error loading media:", error);
+      setMedia([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchData]);
+
+  useEffect(() => {
+    loadMedia();
+  }, [loadMedia]);
+
+  // Mouse drag handlers
+  const handleMouseDown = useCallback((e) => {
+    if (!scrollContainerRef.current) return;
+
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: e.pageX - scrollContainerRef.current.offsetLeft,
+      scrollLeft: scrollContainerRef.current.scrollLeft,
+    };
+
+    // Prevent text selection during drag
+    document.body.style.userSelect = "none";
+  }, []);
+
+  const handleMouseMove = useCallback(
+    (e) => {
+      if (!isDragging || !scrollContainerRef.current) return;
+
+      e.preventDefault();
+      const x = e.pageX - scrollContainerRef.current.offsetLeft;
+      const walk = (x - dragStartRef.current.x) * 2;
+      scrollContainerRef.current.scrollLeft =
+        dragStartRef.current.scrollLeft - walk;
+    },
+    [isDragging]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    document.body.style.userSelect = "";
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setIsDragging(false);
+    document.body.style.userSelect = "";
+  }, []);
+
+  // Touch drag handlers for mobile
+  const handleTouchStart = useCallback((e) => {
+    if (!scrollContainerRef.current) return;
+
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: e.touches[0].pageX - scrollContainerRef.current.offsetLeft,
+      scrollLeft: scrollContainerRef.current.scrollLeft,
+    };
+  }, []);
+
+  const handleTouchMove = useCallback(
+    (e) => {
+      if (!isDragging || !scrollContainerRef.current) return;
+
+      const x = e.touches[0].pageX - scrollContainerRef.current.offsetLeft;
+      const walk = (x - dragStartRef.current.x) * 1.5;
+      scrollContainerRef.current.scrollLeft =
+        dragStartRef.current.scrollLeft - walk;
+    },
+    [isDragging]
+  );
+
+  const handleTouchEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Scroll buttons
+  const scrollLeft = useCallback(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({
+        left: -400,
+        behavior: "smooth",
+      });
+    }
+  }, []);
+
+  const scrollRight = useCallback(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollBy({
+        left: 400,
+        behavior: "smooth",
+      });
+    }
+  }, []);
+
+  // Don't render the row if there's an error or no media
+  if (!loading && media.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mb-12 transition-opacity duration-500 ease-in-out opacity-100">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-2xl font-bold text-white">{title}</h2>
+
+        {/* Scroll buttons - only show if not loading and has media */}
+        {!loading && media.length > 0 && (
+          <div className="hidden md:flex space-x-2">
+            <button
+              onClick={scrollLeft}
+              className="p-2 bg-gray-800/60 hover:bg-gray-700/60 rounded-full text-white transition-colors"
+              aria-label="Scroll left"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={scrollRight}
+              className="p-2 bg-gray-800/60 hover:bg-gray-700/60 rounded-full text-white transition-colors"
+              aria-label="Scroll right"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {loading ? (
+        <Loader />
       ) : (
-        !loading && <p>No results found.</p>
+        <div className="relative group">
+          <div
+            ref={scrollContainerRef}
+            className={`flex overflow-x-auto space-x-4 pb-4 media-row scrollbar-hide ${
+              isDragging ? "cursor-grabbing select-none" : "cursor-grab"
+            }`}
+            style={{
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+            }}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {media.map((item) => (
+              <MediaItem key={item.id} item={item} media_type={media_type} />
+            ))}
+          </div>
+        </div>
       )}
+
+      <style jsx>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .media-row {
+          -webkit-overflow-scrolling: touch;
+        }
+      `}</style>
     </div>
   );
 }
 
-export default SearchPage;
+export default memo(MediaRow);
+</file>
+
+<file path="src/components/RatingBadge.jsx">
+import React from "react";
+
+const RatingBadge = ({ rating }) => {
+  // We don't want to show the badge if the rating is 0 or not available
+  if (!rating || rating === 0) {
+    return null;
+  }
+
+  // Format rating to one decimal place, e.g., 7.7
+  const ratingFormatted = rating.toFixed(1);
+
+  // SVG circle properties
+  const radius = 20;
+  const circumference = 2 * Math.PI * radius;
+  // Calculate the progress offset
+  const offset = circumference - (rating / 10) * circumference;
+
+  // Determine the color of the ring based on the rating value
+  const getRingColor = () => {
+    if (rating >= 7) return "stroke-green-500"; // Good
+    if (rating >= 5) return "stroke-yellow-500"; // Average
+    return "stroke-red-500"; // Bad
+  };
+
+  return (
+    <div
+      className="absolute bottom-2 left-2 w-10 h-10 z-10"
+      title={`Rating: ${ratingFormatted}`}
+    >
+      <svg className="w-full h-full" viewBox="0 0 50 50">
+        {/* Background of the circle */}
+        <circle
+          className="stroke-transparent"
+          cx="25"
+          cy="25"
+          r={radius}
+          strokeWidth="5"
+          fill="rgba(0, 0, 0, 0.8)"
+        />
+        {/* Progress ring */}
+        <circle
+          className={`transform -rotate-90 origin-center ${getRingColor()}`}
+          cx="25"
+          cy="25"
+          r={radius}
+          strokeWidth="4"
+          fill="transparent"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+        />
+      </svg>
+      {/* Text in the center */}
+      <div className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs">
+        {ratingFormatted}
+      </div>
+    </div>
+  );
+};
+
+export default RatingBadge;
 </file>
 
 <file path=".gitignore">
@@ -173,64 +461,6 @@ export default defineConfig([
 ])
 </file>
 
-<file path="index.html">
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>dotflix_1</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
-</html>
-</file>
-
-<file path="package.json">
-{
-  "name": "dotflix_1",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite --host",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@tailwindcss/vite": "^4.1.13",
-    "axios": "^1.12.2",
-    "hls.js": "^1.6.13",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "react-icons": "^5.5.0",
-    "react-router-dom": "^7.9.1",
-    "slugify": "^1.6.6",
-    "tailwindcss": "^4.1.13",
-    "embla-carousel-react": "^8.0.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.36.0",
-    "@types/react": "^19.1.13",
-    "@types/react-dom": "^19.1.9",
-    "@vitejs/plugin-react": "^5.0.3",
-    "eslint": "^9.36.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.20",
-    "globals": "^16.4.0",
-    "vite": "^7.1.7"
-  }
-}
-</file>
-
-<file path="public/vite.svg">
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
-</file>
-
 <file path="README.md">
 # React + Vite
 
@@ -248,200 +478,6 @@ The React Compiler is not enabled on this template. To add it, see [this documen
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-</file>
-
-<file path="src/App.jsx">
-import { Routes, Route } from 'react-router-dom';
-import Home from "./pages/Home";
-import DetailsPage from './pages/DetailsPage';
-
-function App() {
-  return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      {/* The parameter is now named 'slug' instead of 'id' */}
-      <Route path="/:type/:slug" element={<DetailsPage />} />
-    </Routes>
-  );
-}
-
-export default App;
-</file>
-
-<file path="src/assets/react.svg">
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="35.93" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 228"><path fill="#00D8FF" d="M210.483 73.824a171.49 171.49 0 0 0-8.24-2.597c.465-1.9.893-3.777 1.273-5.621c6.238-30.281 2.16-54.676-11.769-62.708c-13.355-7.7-35.196.329-57.254 19.526a171.23 171.23 0 0 0-6.375 5.848a155.866 155.866 0 0 0-4.241-3.917C100.759 3.829 77.587-4.822 63.673 3.233C50.33 10.957 46.379 33.89 51.995 62.588a170.974 170.974 0 0 0 1.892 8.48c-3.28.932-6.445 1.924-9.474 2.98C17.309 83.498 0 98.307 0 113.668c0 15.865 18.582 31.778 46.812 41.427a145.52 145.52 0 0 0 6.921 2.165a167.467 167.467 0 0 0-2.01 9.138c-5.354 28.2-1.173 50.591 12.134 58.266c13.744 7.926 36.812-.22 59.273-19.855a145.567 145.567 0 0 0 5.342-4.923a168.064 168.064 0 0 0 6.92 6.314c21.758 18.722 43.246 26.282 56.54 18.586c13.731-7.949 18.194-32.003 12.4-61.268a145.016 145.016 0 0 0-1.535-6.842c1.62-.48 3.21-.974 4.76-1.488c29.348-9.723 48.443-25.443 48.443-41.52c0-15.417-17.868-30.326-45.517-39.844Zm-6.365 70.984c-1.4.463-2.836.91-4.3 1.345c-3.24-10.257-7.612-21.163-12.963-32.432c5.106-11 9.31-21.767 12.459-31.957c2.619.758 5.16 1.557 7.61 2.4c23.69 8.156 38.14 20.213 38.14 29.504c0 9.896-15.606 22.743-40.946 31.14Zm-10.514 20.834c2.562 12.94 2.927 24.64 1.23 33.787c-1.524 8.219-4.59 13.698-8.382 15.893c-8.067 4.67-25.32-1.4-43.927-17.412a156.726 156.726 0 0 1-6.437-5.87c7.214-7.889 14.423-17.06 21.459-27.246c12.376-1.098 24.068-2.894 34.671-5.345a134.17 134.17 0 0 1 1.386 6.193ZM87.276 214.515c-7.882 2.783-14.16 2.863-17.955.675c-8.075-4.657-11.432-22.636-6.853-46.752a156.923 156.923 0 0 1 1.869-8.499c10.486 2.32 22.093 3.988 34.498 4.994c7.084 9.967 14.501 19.128 21.976 27.15a134.668 134.668 0 0 1-4.877 4.492c-9.933 8.682-19.886 14.842-28.658 17.94ZM50.35 144.747c-12.483-4.267-22.792-9.812-29.858-15.863c-6.35-5.437-9.555-10.836-9.555-15.216c0-9.322 13.897-21.212 37.076-29.293c2.813-.98 5.757-1.905 8.812-2.773c3.204 10.42 7.406 21.315 12.477 32.332c-5.137 11.18-9.399 22.249-12.634 32.792a134.718 134.718 0 0 1-6.318-1.979Zm12.378-84.26c-4.811-24.587-1.616-43.134 6.425-47.789c8.564-4.958 27.502 2.111 47.463 19.835a144.318 144.318 0 0 1 3.841 3.545c-7.438 7.987-14.787 17.08-21.808 26.988c-12.04 1.116-23.565 2.908-34.161 5.309a160.342 160.342 0 0 1-1.76-7.887Zm110.427 27.268a347.8 347.8 0 0 0-7.785-12.803c8.168 1.033 15.994 2.404 23.343 4.08c-2.206 7.072-4.956 14.465-8.193 22.045a381.151 381.151 0 0 0-7.365-13.322Zm-45.032-43.861c5.044 5.465 10.096 11.566 15.065 18.186a322.04 322.04 0 0 0-30.257-.006c4.974-6.559 10.069-12.652 15.192-18.18ZM82.802 87.83a323.167 323.167 0 0 0-7.227 13.238c-3.184-7.553-5.909-14.98-8.134-22.152c7.304-1.634 15.093-2.97 23.209-3.984a321.524 321.524 0 0 0-7.848 12.897Zm8.081 65.352c-8.385-.936-16.291-2.203-23.593-3.793c2.26-7.3 5.045-14.885 8.298-22.6a321.187 321.187 0 0 0 7.257 13.246c2.594 4.48 5.28 8.868 8.038 13.147Zm37.542 31.03c-5.184-5.592-10.354-11.779-15.403-18.433c4.902.192 9.899.29 14.978.29c5.218 0 10.376-.117 15.453-.343c-4.985 6.774-10.018 12.97-15.028 18.486Zm52.198-57.817c3.422 7.8 6.306 15.345 8.596 22.52c-7.422 1.694-15.436 3.058-23.88 4.071a382.417 382.417 0 0 0 7.859-13.026a347.403 347.403 0 0 0 7.425-13.565Zm-16.898 8.101a358.557 358.557 0 0 1-12.281 19.815a329.4 329.4 0 0 1-23.444.823c-7.967 0-15.716-.248-23.178-.732a310.202 310.202 0 0 1-12.513-19.846h.001a307.41 307.41 0 0 1-10.923-20.627a310.278 310.278 0 0 1 10.89-20.637l-.001.001a307.318 307.318 0 0 1 12.413-19.761c7.613-.576 15.42-.876 23.31-.876H128c7.926 0 15.743.303 23.354.883a329.357 329.357 0 0 1 12.335 19.695a358.489 358.489 0 0 1 11.036 20.54a329.472 329.472 0 0 1-11 20.722Zm22.56-122.124c8.572 4.944 11.906 24.881 6.52 51.026c-.344 1.668-.73 3.367-1.15 5.09c-10.622-2.452-22.155-4.275-34.23-5.408c-7.034-10.017-14.323-19.124-21.64-27.008a160.789 160.789 0 0 1 5.888-5.4c18.9-16.447 36.564-22.941 44.612-18.3ZM128 90.808c12.625 0 22.86 10.235 22.86 22.86s-10.235 22.86-22.86 22.86s-22.86-10.235-22.86-22.86s10.235-22.86 22.86-22.86Z"></path></svg>
-</file>
-
-<file path="src/components/Header.jsx">
-import React, { useState } from "react";
-import { FaSearch } from "react-icons/fa";
-import { Link, useNavigate } from "react-router-dom";
-import SearchBar from "./SearchBar";
-
-function Header() {
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const navigate = useNavigate();
-
-  const handleSearch = (query) => {
-    setIsSearchOpen(false);
-    navigate(`/search?q=${encodeURIComponent(query)}`);
-  };
-
-  return (
-    <header className="fixed top-0 left-0 w-full z-50 transition-colors duration-300 bg-transparent backdrop-blur-md">
-      <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-8">
-          <Link to="/" className="text-3xl font-bold text-red-600">
-            DOTFLIX
-          </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold">
-            <a href="#" className="text-white hover:text-gray-300">
-              Movies
-            </a>
-            <a href="#" className="text-white hover:text-gray-300">
-              Shows
-            </a>
-          </nav>
-        </div>
-        <div className="flex items-center gap-6">
-          <FaSearch
-            className="text-white cursor-pointer h-5 w-5"
-            onClick={() => setIsSearchOpen(!isSearchOpen)}
-          />
-          <button className="bg-black/50 border border-white/20 text-white font-semibold py-2 px-5 rounded-lg text-sm">
-            Login
-          </button>
-        </div>
-      </div>
-      {isSearchOpen && (
-        <div className="absolute top-full left-0 w-full bg-black/80 backdrop-blur-md p-4">
-          <SearchBar onSearch={handleSearch} />
-        </div>
-      )}
-    </header>
-  );
-}
-
-export default Header;
-</file>
-
-<file path="src/components/Hero.jsx">
-import React, { useState, useEffect, useCallback } from "react";
-import { getTrendingMedia } from "../services/tmbdApi";
-import { Link } from "react-router-dom";
-import { createSlug } from "../utils/slug";
-import { FaPlay, FaInfoCircle } from "react-icons/fa";
-
-function Hero() {
-  const [trending, setTrending] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    const fetchTrending = async () => {
-      const data = await getTrendingMedia();
-      if (data?.results) {
-        // Filter for items with necessary data and take the top 5
-        const filtered = data.results
-          .filter(
-            (item) => item.backdrop_path && item.poster_path && item.overview
-          )
-          .slice(0, 5);
-        setTrending(filtered);
-      }
-    };
-    fetchTrending();
-  }, []);
-
-  const nextSlide = useCallback(() => {
-    setCurrentIndex((prevIndex) =>
-      prevIndex === trending.length - 1 ? 0 : prevIndex + 1
-    );
-  }, [trending.length]);
-
-  useEffect(() => {
-    if (trending.length > 1) {
-      const slideInterval = setInterval(nextSlide, 7000); // Change slide every 7 seconds
-      return () => clearInterval(slideInterval);
-    }
-  }, [trending.length, nextSlide]);
-
-  if (trending.length === 0) {
-    return (
-      <div className="h-[90vh] w-full flex items-center justify-center bg-black"></div>
-    );
-  }
-
-  const currentItem = trending[currentIndex];
-  const backdropUrl = `https://image.tmdb.org/t/p/original${currentItem.backdrop_path}`;
-  const posterUrl = `https://image.tmdb.org/t/p/w500${currentItem.poster_path}`;
-  const title = currentItem.title || currentItem.name;
-  const slug = createSlug(currentItem.id, title);
-
-  return (
-    <div className="relative h-[90vh] w-full overflow-hidden">
-      {/* Background Image */}
-      <div
-        className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-        style={{ backgroundImage: `url(${backdropUrl})` }}
-        key={currentItem.id}
-      >
-        <div className="absolute inset-0 bg-black/60 bg-gradient-to-r from-black/80 via-black/40 to-transparent" />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 flex h-full items-center px-6 md:px-12 lg:px-24">
-        <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 text-white w-full">
-          {/* Left Side: Details */}
-          <div className="md:w-2/3 lg:w-1/2 space-y-4 text-center md:text-left">
-            <h1 className="text-4xl md:text-5xl font-bold leading-tight">
-              {title}
-            </h1>
-            <p className="text-gray-300 text-sm md:text-base max-w-2xl line-clamp-3">
-              {currentItem.overview}
-            </p>
-            <div className="flex items-center justify-center md:justify-start gap-4 pt-4">
-              <Link
-                to={`/${currentItem.media_type}/${slug}`}
-                className="flex items-center gap-2 px-6 py-3 bg-white/90 text-black font-semibold rounded-lg hover:bg-white transition"
-              >
-                <FaPlay /> Watch Now
-              </Link>
-              <Link
-                to={`/${currentItem.media_type}/${slug}`}
-                className="flex items-center gap-2 px-6 py-3 bg-gray-500/70 text-white font-semibold rounded-lg hover:bg-gray-500/90 transition"
-              >
-                <FaInfoCircle /> More Info
-              </Link>
-            </div>
-          </div>
-          {/* Right Side: Poster */}
-          <div className="hidden md:flex md:w-1/3 lg:w-1/2 justify-center lg:justify-start">
-            <img
-              src={posterUrl}
-              alt={title}
-              className="rounded-lg shadow-2xl w-48 md:w-56 lg:w-64"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation Dots */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-        {trending.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentIndex(index)}
-            className={`w-3 h-3 rounded-full transition-colors ${
-              currentIndex === index ? "bg-white" : "bg-white/50"
-            }`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default Hero;
 </file>
 
 <file path="src/components/Loader.jsx">
@@ -492,89 +528,6 @@ function MovieDetails({ movie, onWatch, loading }) {
 }
 
 export default MovieDetails;
-</file>
-
-<file path="src/components/ResultsGrid.jsx">
-import React from "react";
-import { Link } from "react-router-dom";
-import { createSlug } from "../utils/slug"; // Import the utility
-
-function ResultsGrid({ results }) {
-  return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Results</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-        {results.map((r) => (
-          // Use the createSlug function to generate the URL
-          <Link to={`/${r.media_type}/${createSlug(r.id, r.title || r.name)}`} key={r.id}>
-            <div
-              className="relative bg-gray-800/40 rounded-lg overflow-hidden shadow-lg hover:scale-105 transition transform cursor-pointer"
-            >
-              {/* ... rest of the component is the same */}
-              {r.poster_path ? (
-                <img
-                  src={`https://image.tmdb.org/t/p/w300${r.poster_path}`}
-                  alt={r.title || r.name}
-                  className="w-full h-64 object-cover"
-                />
-              ) : (
-                <div className="w-full h-64 bg-gray-700 flex items-center justify-center text-gray-400 text-xs">
-                  No Image
-                </div>
-              )}
-              <div className="absolute bottom-0 w-full bg-black/60 p-2 text-sm">
-                <h3 className="font-semibold truncate">{r.title || r.name}</h3>
-                <p className="text-gray-300 text-xs">{r.media_type}</p>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default ResultsGrid;
-</file>
-
-<file path="src/components/SearchBar.jsx">
-import React, { useState } from "react";
-
-function SearchBar({ onSearch, loading }) {
-  const [query, setQuery] = useState("");
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!query.trim()) return;
-    onSearch(query);
-  };
-
-  return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex items-center gap-3 w-full max-w-4xl mx-auto"
-    >
-      <input
-        type="text"
-        value={query}
-        placeholder="🔍 Search for movies, TV shows..."
-        onChange={(e) => setQuery(e.target.value)}
-        className="flex-1 p-3 rounded-lg bg-gray-800/70 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-        disabled={loading}
-        autoFocus
-      />
-      <button
-        type="submit"
-        className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold disabled:bg-gray-500"
-        disabled={loading}
-      >
-        Search
-      </button>
-    </form>
-  );
-}
-
-export default SearchBar;
 </file>
 
 <file path="src/components/TVShowDetails.jsx">
@@ -728,247 +681,66 @@ function VideoPlayer({ src }) {
 export default VideoPlayer;
 </file>
 
-<file path="src/index.css">
-@import "tailwindcss";
+<file path="src/layouts/MainLayout.jsx">
+import React from "react";
+import { Outlet } from "react-router-dom";
+import Header from "../components/Header";
 
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #121212;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-    background-color: #121212;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
-</file>
-
-<file path="src/main.jsx">
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom' // Import BrowserRouter
-import './index.css'
-import App from './App.jsx'
-import Header from "./components/Header.jsx"
-
-createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <BrowserRouter> {/* Wrap your App component */}
-    <Header/>
-      <App />
-    </BrowserRouter>
-  </StrictMode>,
-)
-</file>
-
-<file path="src/pages/DetailsPage.jsx">
-// src/pages/DetailsPage.jsx
-import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
-import { getMediaDetails } from "../services/tmbdApi";
-import { sniffStream } from "../services/streamApi";
-import MovieDetails from "../components/MovieDetails";
-import TVShowDetails from "../components/TVShowDetails";
-import VideoPlayer from "../components/VideoPlayer";
-import Loader from "../components/Loader";
-import { getIdFromSlug } from "../utils/slug"; // Import the utility
-
-function DetailsPage() {
-  const { type, slug } = useParams(); // Get the 'slug' from the URL
-  const [details, setDetails] = useState(null);
-  const [videoUrl, setVideoUrl] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchDetails = async () => {
-      const id = getIdFromSlug(slug); // Extract the ID from the slug
-      if (!id) return; // Handle cases where the slug might be invalid
-
-      setLoading(true);
-      const data = await getMediaDetails(type, id);
-      setDetails({ ...data, type });
-      setLoading(false);
-    };
-
-    fetchDetails();
-  }, [type, slug]);
-
-  const handleWatch = async (embedUrl) => {
-    setLoading(true);
-    setVideoUrl(null);
-    setError(null);
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-
-    try {
-      const streamUrl = await sniffStream(embedUrl, controller.signal);
-      if (streamUrl) {
-        setVideoUrl(streamUrl);
-      } else {
-        alert("Stream not found");
-      }
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      clearTimeout(timeout);
-      setLoading(false);
-    }
-  };
-
-  if (loading && !details) {
-    return <Loader />;
-  }
-
-  if (!details) {
-    return <p>No details found.</p>;
-  }
-
+function MainLayout() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white p-6">
-      <Link
-        to="/"
-        className="mb-6 inline-block text-sm text-gray-300 hover:underline"
-      >
-        ← Back to Search
-      </Link>
-
-      {details.type === "movie" && (
-        <MovieDetails movie={details} onWatch={handleWatch} loading={loading} />
-      )}
-
-      {details.type === "tv" && (
-        <TVShowDetails show={details} onWatch={handleWatch} loading={loading} />
-      )}
-
-      {videoUrl && <VideoPlayer src={videoUrl} />}
-    </div>
+    <>
+      <Header />
+      <main>
+        <Outlet />
+      </main>
+    </>
   );
 }
 
-export default DetailsPage;
+export default MainLayout;
 </file>
 
-<file path="src/pages/Home.jsx">
-import React, { useState } from "react";
-import SearchBar from "../components/SearchBar";
+<file path="src/pages/SearchPage.jsx">
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import ResultsGrid from "../components/ResultsGrid";
 import { searchMedia } from "../services/tmbdApi";
 import Loader from "../components/Loader";
-import Hero from "../components/Hero";
 
-function Home() {
+function SearchPage() {
+  const [searchParams] = useSearchParams();
+  const query = searchParams.get("q");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
 
-  const handleSearch = async (query) => {
-    setLoading(true);
-    setSearched(true);
-    setResults([]);
-    const data = await searchMedia(query);
-    setResults(data?.results || []);
-    setLoading(false);
-  };
+  useEffect(() => {
+    if (!query) return;
+
+    const handleSearch = async () => {
+      setLoading(true);
+      setResults([]);
+      const data = await searchMedia(query);
+      setResults(data?.results || []);
+      setLoading(false);
+    };
+
+    handleSearch();
+  }, [query]);
 
   return (
-    <div className="bg-black text-white">
-      <Hero />
-      <div className="p-6 md:p-12">
-        <SearchBar onSearch={handleSearch} loading={loading} />
-
-        {loading && <Loader />}
-
-        {searched && results.length > 0 && <ResultsGrid results={results} />}
-      </div>
+    <div className="pt-24 p-6 md:p-30 bg-black min-h-screen text-white">
+      <h1 className="text-2xl font-bold mb-6">Search results for: "{query}"</h1>
+      {loading && <Loader />}
+      {results.length > 0 ? (
+        <ResultsGrid results={results} />
+      ) : (
+        !loading && <p>No results found.</p>
+      )}
     </div>
   );
 }
 
-export default Home;
-</file>
-
-<file path="src/services/streamApi.js">
-const STREAM_SERVER_URL = "http://192.168.18.108:5000/geturl";
-
-export async function sniffStream(embedUrl, signal) {
-  try {
-    const res = await fetch(STREAM_SERVER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: embedUrl }),
-      signal,
-    });
-
-    if (!res.ok) {
-      throw new Error("Server error while fetching stream.");
-    }
-
-    const data = await res.json();
-    return data.streamUrl;
-  } catch (err) {
-    if (err.name === "AbortError") {
-      throw new Error(
-        "⚠️ Server is restarting. Please wait 1 minute and try again."
-      );
-    }
-    throw new Error(`❌ Failed to fetch stream: ${err.message}`);
-  }
-}
+export default SearchPage;
 </file>
 
 <file path="src/services/tmbdApi.js">
@@ -1010,6 +782,22 @@ export const getSeasonDetails = (tvId, seasonNumber) => {
 
 export const getTrendingMedia = () => {
   return fetchFromTMDb(`trending/all/day?api_key=${API_KEY}&language=en-US`);
+};
+
+export const getTopRatedMovies = () => {
+  return fetchFromTMDb(`movie/top_rated?api_key=${API_KEY}&language=en-US`);
+};
+
+export const getTopRatedShows = () => {
+  return fetchFromTMDb(`tv/top_rated?api_key=${API_KEY}&language=en-US`);
+};
+
+// Genre IDs can be found on the TMDB website. Examples:
+// Action: 28, Comedy: 35, Horror: 27, Sci-Fi: 878
+export const getMediaByGenre = (genreId) => {
+  return fetchFromTMDb(
+    `discover/movie?api_key=${API_KEY}&with_genres=${genreId}&language=en-US&sort_by=popularity.desc`
+  );
 };
 </file>
 
@@ -1068,6 +856,838 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
 })
+</file>
+
+<file path="package.json">
+{
+  "name": "dotflix_1",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "axios": "^1.12.2",
+    "embla-carousel-react": "^8.6.0",
+    "hls.js": "^1.6.13",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-icons": "^5.5.0",
+    "react-intersection-observer": "^9.16.0",
+    "react-router-dom": "^7.9.1",
+    "slugify": "^1.6.6",
+    "tailwindcss": "^4.1.13"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.3",
+    "eslint": "^9.36.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.4.0",
+    "vite": "^7.1.7"
+  }
+}
+</file>
+
+<file path="src/App.jsx">
+import React, { Suspense, lazy } from "react";
+import { Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import Loader from "./components/Loader";
+import MainLayout from "./layouts/MainLayout";
+
+// Lazy load the pages for faster initial load time
+const DetailsPage = lazy(() => import("./pages/DetailsPage"));
+const SearchPage = lazy(() => import("./pages/SearchPage"));
+
+function App() {
+  return (
+    <Suspense
+      fallback={
+        <div className="h-screen w-full flex items-center justify-center bg-black">
+          <Loader />
+        </div>
+      }
+    >
+      <Routes>
+        <Route element={<MainLayout />}>
+          <Route path="/" element={<Home />} />
+          <Route path="/:type/:slug" element={<DetailsPage />} />
+          <Route path="/search" element={<SearchPage />} />
+        </Route>
+      </Routes>
+    </Suspense>
+  );
+}
+
+export default App;
+</file>
+
+<file path="src/components/Header.jsx">
+import React, { useState } from "react";
+import { FaSearch, FaBars, FaTimes } from "react-icons/fa";
+import { Link, useNavigate } from "react-router-dom";
+import SearchBar from "./SearchBar";
+import { SiViaplay } from "react-icons/si";
+
+function Header() {
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSearch = (query) => {
+    setIsSearchOpen(false);
+    navigate(`/search?q=${encodeURIComponent(query)}`);
+  };
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+    // Close search when opening mobile menu
+    if (!isMobileMenuOpen) {
+      setIsSearchOpen(false);
+    }
+  };
+
+  const toggleSearch = () => {
+    setIsSearchOpen(!isSearchOpen);
+    // Close mobile menu when opening search
+    if (!isSearchOpen) {
+      setIsMobileMenuOpen(false);
+    }
+  };
+
+  return (
+    <nav className="flex mx-auto justify-center items-center">
+      <header className="fixed top-4 w-full z-50 transition-colors duration-300 max-w-7xl rounded-md border bg-transparent backdrop-blur-md px-4">
+        <div className="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+          {/* Logo */}
+          <Link
+            to="/"
+            className="text-2xl sm:text-3xl font-bold !text-white flex flex-row gap-4"
+          >
+            <strong>DotfLix</strong>
+            <SiViaplay className="mt-1" />
+          </Link>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold">
+            <a href="#" className="text-white hover:text-gray-300">
+              Movies
+            </a>
+            <a href="#" className="text-white hover:text-gray-300">
+              Shows
+            </a>
+          </nav>
+
+          {/* Desktop Actions */}
+          <div className="hidden md:flex items-center gap-4">
+            <FaSearch
+              className="text-white cursor-pointer h-5 w-5 hover:text-gray-300"
+              onClick={toggleSearch}
+            />
+            <button className="bg-black/50 border border-white/20 text-white font-semibold py-2 px-5 rounded-lg text-sm hover:bg-black/70 transition-colors">
+              Login
+            </button>
+          </div>
+
+          {/* Mobile Actions */}
+          <div className="flex md:hidden items-center gap-3">
+            <FaSearch
+              className="text-white cursor-pointer h-5 w-5 hover:text-gray-300"
+              onClick={toggleSearch}
+            />
+            <button
+              onClick={toggleMobileMenu}
+              className="text-white hover:text-gray-300"
+            >
+              {isMobileMenuOpen ? (
+                <FaTimes className="h-6 w-6" />
+              ) : (
+                <FaBars className="h-6 w-6" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        {isSearchOpen && (
+          <div className="absolute top-full left-0 w-full bg-black/90 backdrop-blur-md rounded-b-lg p-4 border-t border-white/10">
+            <SearchBar onSearch={handleSearch} />
+          </div>
+        )}
+
+        {/* Mobile Menu */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden absolute top-full left-0 w-full bg-black/90 backdrop-blur-md rounded-b-lg border-t border-white/10">
+            <nav className="flex flex-col p-4 space-y-4">
+              <a
+                href="#"
+                className="text-white hover:text-gray-300 text-lg font-semibold py-2"
+              >
+                Movies
+              </a>
+              <a
+                href="#"
+                className="text-white hover:text-gray-300 text-lg font-semibold py-2"
+              >
+                Shows
+              </a>
+              <div className="pt-4 border-t border-white/10">
+                <button className="w-full bg-black/50 border border-white/20 text-white font-semibold py-3 px-5 rounded-lg hover:bg-black/70 transition-colors">
+                  Login
+                </button>
+              </div>
+            </nav>
+          </div>
+        )}
+      </header>
+    </nav>
+  );
+}
+
+export default Header;
+</file>
+
+<file path="src/components/Hero.jsx">
+import React, { useState, useEffect, useCallback } from "react";
+import { getTrendingMedia } from "../services/tmbdApi";
+import { Link } from "react-router-dom";
+import { createSlug } from "../utils/slug";
+import { FaPlay, FaInfoCircle } from "react-icons/fa";
+import useEmblaCarousel from "embla-carousel-react";
+import Loader from "./Loader";
+
+function Hero() {
+  const [trending, setTrending] = useState([]);
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const fetchTrending = async () => {
+      const preloadImages = (urls) => {
+        urls.forEach((url) => {
+          const img = new Image();
+          img.src = url;
+        });
+      };
+
+      const data = await getTrendingMedia();
+      if (data?.results) {
+        const filtered = data.results
+          .filter(
+            (item) => item.backdrop_path && item.poster_path && item.overview
+          )
+          .slice(0, 7);
+        setTrending(filtered);
+
+        const backdropUrls = filtered.map(
+          (item) => `https://image.tmdb.org/t/p/w1280${item.backdrop_path}`
+        );
+        preloadImages(backdropUrls);
+      }
+    };
+
+    fetchTrending();
+  }, []);
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setCurrentIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+
+    onSelect(); // fire once on mount
+    emblaApi.on("select", onSelect);
+
+    const autoplay = setInterval(() => {
+      emblaApi.scrollNext();
+    }, 7000);
+
+    return () => {
+      emblaApi.off("select", onSelect);
+      clearInterval(autoplay);
+    };
+  }, [emblaApi, onSelect]);
+
+  if (trending.length === 0) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-black">
+        <Loader />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="relative h-screen w-full overflow-hidden cursor-grab select-none"
+      ref={emblaRef}
+    >
+      <div className="flex h-full">
+        {trending.map((item) => {
+          const backdropUrl = `https://image.tmdb.org/t/p/w1280${item.backdrop_path}`;
+          const posterUrl = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+          const title = item.title || item.name;
+          const slug = createSlug(item.id, title);
+
+          return (
+            <div className="flex-[0_0_100%] relative" key={item.id}>
+              {/* Background */}
+              <div
+                className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
+                style={{ backgroundImage: `url(${backdropUrl})` }}
+              >
+                <div className="absolute inset-0 bg-black/70 bg-gradient-to-t from-black via-transparent to-black/30" />
+              </div>
+
+              {/* Foreground content */}
+              <div className="relative z-10 flex h-full items-center justify-center px-6 md:px-12">
+                <div className="flex items-center justify-center gap-8 max-w-6xl w-full">
+                  {/* Left side: text */}
+                  <div className="max-w-xl text-white space-y-4 animate-fade-in">
+                    <h1 className="text-4xl md:text-6xl font-bold leading-tight">
+                      {title}
+                    </h1>
+                    <p className="text-gray-300 text-sm md:text-base line-clamp-3 select-text">
+                      {item.overview}
+                    </p>
+                    <div className="flex items-center gap-4 pt-4">
+                      <Link
+                        to={`/${item.media_type}/${slug}`}
+                        className="flex items-center gap-2 px-6 py-3 bg-white/90 text-black font-semibold rounded-lg hover:bg-white transition"
+                      >
+                        <FaPlay /> Watch Now
+                      </Link>
+                      <Link
+                        to={`/${item.media_type}/${slug}`}
+                        className="flex items-center gap-2 px-6 py-3 bg-gray-500/70 text-white font-semibold rounded-lg hover:bg-gray-500/90 transition"
+                      >
+                        <FaInfoCircle /> More Info
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Right side: thumbnail */}
+                  <div className="hidden md:block max-w-xs flex-shrink-0">
+                    <img
+                      src={posterUrl}
+                      alt={title}
+                      className="rounded-lg shadow-lg w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Dots navigation */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+        {trending.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => emblaApi && emblaApi.scrollTo(index)}
+            className={`w-3 h-3 rounded-full transition-all ${
+              currentIndex === index
+                ? "bg-white"
+                : "bg-white/40 hover:bg-white/60"
+            }`}
+            aria-label={`Go to slide ${index + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default Hero;
+</file>
+
+<file path="src/components/ResultsGrid.jsx">
+import React from "react";
+import { Link } from "react-router-dom";
+import { createSlug } from "../utils/slug";
+import RatingBadge from "./RatingBadge";
+
+function ResultsGrid({ results }) {
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-4">Results</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+        {results.map((r) => (
+          <Link
+            to={`/${r.media_type}/${createSlug(r.id, r.title || r.name)}`}
+            key={r.id}
+          >
+            <div className="relative bg-gray-800/40 rounded-lg overflow-hidden shadow-lg hover:scale-105 transition transform cursor-pointer">
+              {/* Rating Badge - positioned at top-left */}
+              <div className="absolute bottom-11 md:bottom-13 left-27 md:left-33 z-10">
+                <RatingBadge rating={r.vote_average} />
+              </div>
+
+              {/* Poster */}
+              {r.poster_path ? (
+                <img
+                  src={`https://image.tmdb.org/t/p/w300${r.poster_path}`}
+                  alt={r.title || r.name}
+                  className="w-full h-86 object-cover"
+                />
+              ) : (
+                <div className="w-full h-64 bg-gray-700 flex items-center justify-center text-gray-400 text-xs">
+                  No Image
+                </div>
+              )}
+
+              {/* Metadata overlay */}
+              <div className="absolute bottom-0 w-full bg-black/80 p-2 text-xs sm:text-sm">
+                <div className="flex items-end gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold truncate">
+                      {r.title || r.name}
+                    </h3>
+
+                    <div className="flex items-center justify-between text-gray-300 gap-x-2">
+                      {/* Year (movie: release_date | tv: first_air_date) */}
+                      {(r.release_date || r.first_air_date) && (
+                        <span>
+                          {new Date(
+                            r.release_date || r.first_air_date
+                          ).getFullYear()}
+                        </span>
+                      )}
+
+                      {/* Runtime (only for movies usually) */}
+                      {r.runtime && <span>{r.runtime} min</span>}
+
+                      {/* Genres */}
+                      {r.genres && r.genres.length > 0 && (
+                        <span className="truncate">
+                          {r.genres.map((g) => g.name).join(", ")}
+                        </span>
+                      )}
+
+                      {/* Media type */}
+                      <span className="italic text-gray-400">
+                        {r.media_type}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default ResultsGrid;
+</file>
+
+<file path="src/components/SearchBar.jsx">
+import React, { useState } from "react";
+
+function SearchBar({ onSearch, loading }) {
+  const [query, setQuery] = useState("");
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!query.trim()) return;
+    onSearch(query);
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="flex items-center gap-3 w-full max-w-4xl mx-auto"
+    >
+      <input
+        type="text"
+        value={query}
+        placeholder="🔍 Search for movies, TV shows..."
+        onChange={(e) => setQuery(e.target.value)}
+        className="flex-1 p-3 rounded-lg bg-gray-800/70 text-white focus:outline-none focus:ring-2 focus:ring-red-500"
+        disabled={loading}
+        autoFocus
+      />
+      <button
+        type="submit"
+        className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold disabled:bg-gray-500"
+        disabled={loading}
+      >
+        Search
+      </button>
+    </form>
+  );
+}
+
+export default SearchBar;
+</file>
+
+<file path="src/index.css">
+@import "tailwindcss";
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #121212;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*{
+  font-family: "Oswald", sans-serif;
+
+}
+
+body {
+    background-color: #121212;
+}
+
+a {
+  font-weight: 500;
+  text-decoration: inherit;
+}
+
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+/* Custom Scrollbar Styles for Media Rows */
+.media-row::-webkit-scrollbar {
+  height: 8px;
+}
+.media-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+.media-row::-webkit-scrollbar-thumb {
+  background: rgba(229, 9, 20, 0.7); /* Netflix Red */
+  border-radius: 4px;
+}
+.media-row::-webkit-scrollbar-thumb:hover {
+    background: rgba(229, 9, 20, 1);
+}
+</file>
+
+<file path="src/main.jsx">
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom"; 
+import "./index.css";
+import App from "./App.jsx";
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </StrictMode>
+);
+</file>
+
+<file path="src/pages/DetailsPage.jsx">
+import React, { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import { getMediaDetails } from "../services/tmbdApi";
+import { sniffStream } from "../services/streamApi";
+import MovieDetails from "../components/MovieDetails";
+import TVShowDetails from "../components/TVShowDetails";
+import VideoPlayer from "../components/VideoPlayer";
+import Loader from "../components/Loader";
+import { getIdFromSlug } from "../utils/slug"; 
+
+function DetailsPage() {
+  const { type, slug } = useParams(); 
+  const [details, setDetails] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchDetails = async () => {
+      const id = getIdFromSlug(slug); 
+      if (!id) return;
+      setLoading(true);
+      const data = await getMediaDetails(type, id);
+      setDetails({ ...data, type });
+      setLoading(false);
+    };
+    fetchDetails();
+  }, [type, slug]);
+
+  const handleWatch = async (embedUrl) => {
+    setLoading(true);
+    setVideoUrl(null);
+    setError(null);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    try {
+      const streamUrl = await sniffStream(embedUrl, controller.signal);
+      if (streamUrl) {
+        setVideoUrl(streamUrl);
+      } else {
+        alert("Stream not found");
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      clearTimeout(timeout);
+      setLoading(false);
+    }
+  };
+
+  if (loading && !details) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-900 via-gray-800 to-black">
+        <Loader />
+      </div>
+    );
+  }
+
+  if (!details) {
+    return (
+      <div className="min-h-screen  bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xl mb-4">No details found.</p>
+          <Link to="/" className="text-blue-400 hover:text-blue-300 underline">
+            ← Back to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen  bg-gradient-to-b from-gray-900 via-gray-800 to-black text-white">
+      {/* Add padding-top to account for fixed header */}
+      <div className="!pt-24 pb-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <Link
+            to="/"
+            className="mb-6 inline-block text-sm text-gray-300 hover:text-gray-100 hover:underline transition-colors"
+          >
+            ← Back to Home
+          </Link>
+
+          {details.type === "movie" && (
+            <MovieDetails
+              movie={details}
+              onWatch={handleWatch}
+              loading={loading}
+            />
+          )}
+          {details.type === "tv" && (
+            <TVShowDetails
+              show={details}
+              onWatch={handleWatch}
+              loading={loading}
+            />
+          )}
+          {videoUrl && <VideoPlayer src={videoUrl} />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default DetailsPage;
+</file>
+
+<file path="src/pages/Home.jsx">
+import React from "react";
+import { useInView } from "react-intersection-observer";
+import Hero from "../components/Hero";
+import MediaRow from "../components/MediaRow";
+import {
+  getTrendingMedia,
+  getTopRatedMovies,
+  getTopRatedShows,
+  getMediaByGenre,
+} from "../services/tmbdApi";
+import Loader from "../components/Loader";
+
+// Modern LazyLoad component using react-intersection-observer
+const LazyLoad = ({ children, height = 340, offset = 200, placeholder }) => {
+  const { ref, inView } = useInView({
+    threshold: 0,
+    triggerOnce: true,
+    rootMargin: `${offset}px 0px`,
+  });
+
+  return (
+    <div ref={ref} style={{ minHeight: height }}>
+      {inView ? children : placeholder}
+    </div>
+  );
+};
+
+// Placeholder for lazy-loaded components
+const Placeholder = () => (
+  <div className="h-[340px] flex justify-center items-center">
+    <Loader />
+  </div>
+);
+
+function Home() {
+  return (
+    <div className="bg-black text-white">
+      <Hero />
+      <div className="p-6 md:p-12">
+        <LazyLoad height={340} offset={200} placeholder={<Placeholder />}>
+          <MediaRow title="Trending Now" fetchData={getTrendingMedia} />
+        </LazyLoad>
+
+        <LazyLoad height={340} offset={200} placeholder={<Placeholder />}>
+          <MediaRow
+            title="Top 10 Movies"
+            fetchData={getTopRatedMovies}
+            media_type="movie"
+          />
+        </LazyLoad>
+
+        <LazyLoad height={340} offset={200} placeholder={<Placeholder />}>
+          <MediaRow
+            title="Top 10 Shows"
+            fetchData={getTopRatedShows}
+            media_type="tv"
+          />
+        </LazyLoad>
+
+        <LazyLoad height={340} offset={200} placeholder={<Placeholder />}>
+          <MediaRow
+            title="Action & Adventure"
+            fetchData={() => getMediaByGenre(28)}
+            media_type="movie"
+          />
+        </LazyLoad>
+
+        <LazyLoad height={340} offset={200} placeholder={<Placeholder />}>
+          <MediaRow
+            title="Comedy"
+            fetchData={() => getMediaByGenre(35)}
+            media_type="movie"
+          />
+        </LazyLoad>
+
+        <LazyLoad height={340} offset={200} placeholder={<Placeholder />}>
+          <MediaRow
+            title="Sci-Fi & Fantasy"
+            fetchData={() => getMediaByGenre(878)}
+            media_type="movie"
+          />
+        </LazyLoad>
+      </div>
+    </div>
+  );
+}
+
+export default Home;
+</file>
+
+<file path="src/services/streamApi.js">
+const STREAM_SERVER_URL = "https://dotflix.onrender.com/geturl";
+
+export async function sniffStream(embedUrl, signal) {
+  try {
+    const res = await fetch(STREAM_SERVER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: embedUrl }),
+      signal,
+    });
+
+    if (!res.ok) {
+      throw new Error("Server error while fetching stream.");
+    }
+
+    const data = await res.json();
+    return data.streamUrl;
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error(
+        "⚠️ Server is restarting. Please wait 1 minute and try again."
+      );
+    }
+    throw new Error(`❌ Failed to fetch stream: ${err.message}`);
+  }
+}
+</file>
+
+<file path="index.html">
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image" href="/src/assets/lotus.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400..800&family=Bitcount+Single+Ink:wght@100..900&family=League+Gothic&family=Oswald:wght@200..700&display=swap"
+    rel="stylesheet">
+  <title>Dotflix | The GenV Streaming Site</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
 </file>
 
 </files>
