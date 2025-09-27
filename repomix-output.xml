@@ -72,6 +72,98 @@ vite.config.js
 <files>
 This section contains the contents of the repository's files.
 
+<file path=".gitignore">
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+</file>
+
+<file path="eslint.config.js">
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import { defineConfig, globalIgnores } from 'eslint/config'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{js,jsx}'],
+    extends: [
+      js.configs.recommended,
+      reactHooks.configs['recommended-latest'],
+      reactRefresh.configs.vite,
+    ],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+    },
+  },
+])
+</file>
+
+<file path="README.md">
+# React + Vite
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+
+## React Compiler
+
+The React Compiler is not enabled on this template. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+</file>
+
+<file path="src/components/Loader.jsx">
+import React from 'react';
+
+function Loader() {
+  return (
+    <div className="flex justify-center items-center p-8">
+      <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-blue-500"></div>
+    </div>
+  );
+}
+
+export default Loader;
+</file>
+
 <file path="src/components/MediaRow.jsx">
 import React, { useState, useEffect, useRef, useCallback, memo } from "react";
 import { Link } from "react-router-dom";
@@ -338,6 +430,42 @@ function MediaRow({ title, fetchData, media_type }) {
 export default memo(MediaRow);
 </file>
 
+<file path="src/components/MovieDetails.jsx">
+import React from "react";
+
+function MovieDetails({ movie, onWatch, loading }) {
+  const embedUrl = `https://www.vidking.net/embed/movie/${movie.id}?color=e50914&autoPlay=true`;
+
+  return (
+    <>
+      <div className="flex flex-col md:flex-row gap-6 mb-6">
+        {movie.poster_path && (
+          <img
+            src={`https://image.tmdb.org/t/p/w300${movie.poster_path}`}
+            alt={movie.title}
+            className="rounded-lg shadow-lg w-full md:w-auto"
+          />
+        )}
+        <div>
+          <h1 className="text-3xl font-bold">{movie.title}</h1>
+          <p className="text-gray-400 mt-2">{movie.tagline}</p>
+          <p className="text-gray-300 mt-4 leading-relaxed">{movie.overview}</p>
+        </div>
+      </div>
+      <button
+        onClick={() => onWatch(embedUrl)}
+        className="px-6 py-3 bg-gradient-to-r from-red-600 to-orange-500 hover:opacity-90 rounded-lg text-white font-semibold shadow-lg"
+        disabled={loading}
+      >
+        {loading ? "Loading..." : "▶ Watch Movie"}
+      </button>
+    </>
+  );
+}
+
+export default MovieDetails;
+</file>
+
 <file path="src/components/RatingBadge.jsx">
 import React from "react";
 
@@ -400,134 +528,6 @@ const RatingBadge = ({ rating }) => {
 };
 
 export default RatingBadge;
-</file>
-
-<file path=".gitignore">
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
-.DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-</file>
-
-<file path="eslint.config.js">
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import { defineConfig, globalIgnores } from 'eslint/config'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{js,jsx}'],
-    extends: [
-      js.configs.recommended,
-      reactHooks.configs['recommended-latest'],
-      reactRefresh.configs.vite,
-    ],
-    languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
-      parserOptions: {
-        ecmaVersion: 'latest',
-        ecmaFeatures: { jsx: true },
-        sourceType: 'module',
-      },
-    },
-    rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
-    },
-  },
-])
-</file>
-
-<file path="README.md">
-# React + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## React Compiler
-
-The React Compiler is not enabled on this template. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-</file>
-
-<file path="src/components/Loader.jsx">
-import React from 'react';
-
-function Loader() {
-  return (
-    <div className="flex justify-center items-center p-8">
-      <div className="w-16 h-16 border-4 border-dashed rounded-full animate-spin border-blue-500"></div>
-    </div>
-  );
-}
-
-export default Loader;
-</file>
-
-<file path="src/components/MovieDetails.jsx">
-import React from "react";
-
-function MovieDetails({ movie, onWatch, loading }) {
-  const embedUrl = `https://www.vidking.net/embed/movie/${movie.id}?color=e50914&autoPlay=true`;
-
-  return (
-    <>
-      <div className="flex flex-col md:flex-row gap-6 mb-6">
-        {movie.poster_path && (
-          <img
-            src={`https://image.tmdb.org/t/p/w300${movie.poster_path}`}
-            alt={movie.title}
-            className="rounded-lg shadow-lg w-full md:w-auto"
-          />
-        )}
-        <div>
-          <h1 className="text-3xl font-bold">{movie.title}</h1>
-          <p className="text-gray-400 mt-2">{movie.tagline}</p>
-          <p className="text-gray-300 mt-4 leading-relaxed">{movie.overview}</p>
-        </div>
-      </div>
-      <button
-        onClick={() => onWatch(embedUrl)}
-        className="px-6 py-3 bg-gradient-to-r from-red-600 to-orange-500 hover:opacity-90 rounded-lg text-white font-semibold shadow-lg"
-        disabled={loading}
-      >
-        {loading ? "Loading..." : "▶ Watch Movie"}
-      </button>
-    </>
-  );
-}
-
-export default MovieDetails;
 </file>
 
 <file path="src/components/TVShowDetails.jsx">
@@ -743,64 +743,6 @@ function SearchPage() {
 export default SearchPage;
 </file>
 
-<file path="src/services/tmbdApi.js">
-const API_KEY = "ad301b7cc82ffe19273e55e4d4206885";
-const BASE_URL = "https://api.themoviedb.org/3";
-
-async function fetchFromTMDb(endpoint) {
-  const url = `${BASE_URL}/${endpoint}`;
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.error(`Failed to fetch from TMDb: ${res.statusText}`);
-      return null;
-    }
-    return await res.json();
-  } catch (err) {
-    console.error("Error in fetchFromTMDb:", err);
-    return null;
-  }
-}
-
-export const searchMedia = (query) => {
-  return fetchFromTMDb(
-    `search/multi?api_key=${API_KEY}&query=${encodeURIComponent(
-      query
-    )}&language=en-US`
-  );
-};
-
-export const getMediaDetails = (type, id) => {
-  return fetchFromTMDb(`${type}/${id}?api_key=${API_KEY}&language=en-US`);
-};
-
-export const getSeasonDetails = (tvId, seasonNumber) => {
-  return fetchFromTMDb(
-    `tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}&language=en-US`
-  );
-};
-
-export const getTrendingMedia = () => {
-  return fetchFromTMDb(`trending/all/day?api_key=${API_KEY}&language=en-US`);
-};
-
-export const getTopRatedMovies = () => {
-  return fetchFromTMDb(`movie/top_rated?api_key=${API_KEY}&language=en-US`);
-};
-
-export const getTopRatedShows = () => {
-  return fetchFromTMDb(`tv/top_rated?api_key=${API_KEY}&language=en-US`);
-};
-
-// Genre IDs can be found on the TMDB website. Examples:
-// Action: 28, Comedy: 35, Horror: 27, Sci-Fi: 878
-export const getMediaByGenre = (genreId) => {
-  return fetchFromTMDb(
-    `discover/movie?api_key=${API_KEY}&with_genres=${genreId}&language=en-US&sort_by=popularity.desc`
-  );
-};
-</file>
-
 <file path="src/utils/encoder.js">
 export const encodeId = (id) => {
   return btoa(id.toString())
@@ -856,45 +798,6 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
 })
-</file>
-
-<file path="package.json">
-{
-  "name": "dotflix_1",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite --host",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@tailwindcss/vite": "^4.1.13",
-    "axios": "^1.12.2",
-    "embla-carousel-react": "^8.6.0",
-    "hls.js": "^1.6.13",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "react-icons": "^5.5.0",
-    "react-intersection-observer": "^9.16.0",
-    "react-router-dom": "^7.9.1",
-    "slugify": "^1.6.6",
-    "tailwindcss": "^4.1.13"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.36.0",
-    "@types/react": "^19.1.13",
-    "@types/react-dom": "^19.1.9",
-    "@vitejs/plugin-react": "^5.0.3",
-    "eslint": "^9.36.0",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.20",
-    "globals": "^16.4.0",
-    "vite": "^7.1.7"
-  }
-}
 </file>
 
 <file path="src/App.jsx">
@@ -1056,245 +959,6 @@ function Header() {
 export default Header;
 </file>
 
-<file path="src/components/Hero.jsx">
-import React, { useState, useEffect, useCallback } from "react";
-import { getTrendingMedia } from "../services/tmbdApi";
-import { Link } from "react-router-dom";
-import { createSlug } from "../utils/slug";
-import { FaPlay, FaInfoCircle } from "react-icons/fa";
-import useEmblaCarousel from "embla-carousel-react";
-import Loader from "./Loader";
-
-function Hero() {
-  const [trending, setTrending] = useState([]);
-  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    const fetchTrending = async () => {
-      const preloadImages = (urls) => {
-        urls.forEach((url) => {
-          const img = new Image();
-          img.src = url;
-        });
-      };
-
-      const data = await getTrendingMedia();
-      if (data?.results) {
-        const filtered = data.results
-          .filter(
-            (item) => item.backdrop_path && item.poster_path && item.overview
-          )
-          .slice(0, 7);
-        setTrending(filtered);
-
-        const backdropUrls = filtered.map(
-          (item) => `https://image.tmdb.org/t/p/w1280${item.backdrop_path}`
-        );
-        preloadImages(backdropUrls);
-      }
-    };
-
-    fetchTrending();
-  }, []);
-
-  const onSelect = useCallback(() => {
-    if (!emblaApi) return;
-    setCurrentIndex(emblaApi.selectedScrollSnap());
-  }, [emblaApi]);
-
-  useEffect(() => {
-    if (!emblaApi) return;
-
-    onSelect(); // fire once on mount
-    emblaApi.on("select", onSelect);
-
-    const autoplay = setInterval(() => {
-      emblaApi.scrollNext();
-    }, 7000);
-
-    return () => {
-      emblaApi.off("select", onSelect);
-      clearInterval(autoplay);
-    };
-  }, [emblaApi, onSelect]);
-
-  if (trending.length === 0) {
-    return (
-      <div className="h-screen w-full flex items-center justify-center bg-black">
-        <Loader />
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="relative h-screen w-full overflow-hidden cursor-grab select-none"
-      ref={emblaRef}
-    >
-      <div className="flex h-full">
-        {trending.map((item) => {
-          const backdropUrl = `https://image.tmdb.org/t/p/w1280${item.backdrop_path}`;
-          const posterUrl = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
-          const title = item.title || item.name;
-          const slug = createSlug(item.id, title);
-
-          return (
-            <div className="flex-[0_0_100%] relative" key={item.id}>
-              {/* Background */}
-              <div
-                className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-                style={{ backgroundImage: `url(${backdropUrl})` }}
-              >
-                <div className="absolute inset-0 bg-black/70 bg-gradient-to-t from-black via-transparent to-black/30" />
-              </div>
-
-              {/* Foreground content */}
-              <div className="relative z-10 flex h-full items-center justify-center px-6 md:px-12">
-                <div className="flex items-center justify-center gap-8 max-w-6xl w-full">
-                  {/* Left side: text */}
-                  <div className="max-w-xl text-white space-y-4 animate-fade-in">
-                    <h1 className="text-4xl md:text-6xl font-bold leading-tight">
-                      {title}
-                    </h1>
-                    <p className="text-gray-300 text-sm md:text-base line-clamp-3 select-text">
-                      {item.overview}
-                    </p>
-                    <div className="flex items-center gap-4 pt-4">
-                      <Link
-                        to={`/${item.media_type}/${slug}`}
-                        className="flex items-center gap-2 px-6 py-3 bg-white/90 text-black font-semibold rounded-lg hover:bg-white transition"
-                      >
-                        <FaPlay /> Watch Now
-                      </Link>
-                      <Link
-                        to={`/${item.media_type}/${slug}`}
-                        className="flex items-center gap-2 px-6 py-3 bg-gray-500/70 text-white font-semibold rounded-lg hover:bg-gray-500/90 transition"
-                      >
-                        <FaInfoCircle /> More Info
-                      </Link>
-                    </div>
-                  </div>
-
-                  {/* Right side: thumbnail */}
-                  <div className="hidden md:block max-w-xs flex-shrink-0">
-                    <img
-                      src={posterUrl}
-                      alt={title}
-                      className="rounded-lg shadow-lg w-full"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Dots navigation */}
-      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-        {trending.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => emblaApi && emblaApi.scrollTo(index)}
-            className={`w-3 h-3 rounded-full transition-all ${
-              currentIndex === index
-                ? "bg-white"
-                : "bg-white/40 hover:bg-white/60"
-            }`}
-            aria-label={`Go to slide ${index + 1}`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default Hero;
-</file>
-
-<file path="src/components/ResultsGrid.jsx">
-import React from "react";
-import { Link } from "react-router-dom";
-import { createSlug } from "../utils/slug";
-import RatingBadge from "./RatingBadge";
-
-function ResultsGrid({ results }) {
-  return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">Results</h2>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-        {results.map((r) => (
-          <Link
-            to={`/${r.media_type}/${createSlug(r.id, r.title || r.name)}`}
-            key={r.id}
-          >
-            <div className="relative bg-gray-800/40 rounded-lg overflow-hidden shadow-lg hover:scale-105 transition transform cursor-pointer">
-              {/* Rating Badge - positioned at top-left */}
-              <div className="absolute bottom-11 md:bottom-13 left-27 md:left-33 z-10">
-                <RatingBadge rating={r.vote_average} />
-              </div>
-
-              {/* Poster */}
-              {r.poster_path ? (
-                <img
-                  src={`https://image.tmdb.org/t/p/w300${r.poster_path}`}
-                  alt={r.title || r.name}
-                  className="w-full h-86 object-cover"
-                />
-              ) : (
-                <div className="w-full h-64 bg-gray-700 flex items-center justify-center text-gray-400 text-xs">
-                  No Image
-                </div>
-              )}
-
-              {/* Metadata overlay */}
-              <div className="absolute bottom-0 w-full bg-black/80 p-2 text-xs sm:text-sm">
-                <div className="flex items-end gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold truncate">
-                      {r.title || r.name}
-                    </h3>
-
-                    <div className="flex items-center justify-between text-gray-300 gap-x-2">
-                      {/* Year (movie: release_date | tv: first_air_date) */}
-                      {(r.release_date || r.first_air_date) && (
-                        <span>
-                          {new Date(
-                            r.release_date || r.first_air_date
-                          ).getFullYear()}
-                        </span>
-                      )}
-
-                      {/* Runtime (only for movies usually) */}
-                      {r.runtime && <span>{r.runtime} min</span>}
-
-                      {/* Genres */}
-                      {r.genres && r.genres.length > 0 && (
-                        <span className="truncate">
-                          {r.genres.map((g) => g.name).join(", ")}
-                        </span>
-                      )}
-
-                      {/* Media type */}
-                      <span className="italic text-gray-400">
-                        {r.media_type}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-export default ResultsGrid;
-</file>
-
 <file path="src/components/SearchBar.jsx">
 import React, { useState } from "react";
 
@@ -1333,92 +997,6 @@ function SearchBar({ onSearch, loading }) {
 }
 
 export default SearchBar;
-</file>
-
-<file path="src/index.css">
-@import "tailwindcss";
-
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #121212;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-*{
-  font-family: "Oswald", sans-serif;
-
-}
-
-body {
-    background-color: #121212;
-}
-
-a {
-  font-weight: 500;
-  text-decoration: inherit;
-}
-
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
-}
-
-/* Custom Scrollbar Styles for Media Rows */
-.media-row::-webkit-scrollbar {
-  height: 8px;
-}
-.media-row::-webkit-scrollbar-track {
-  background: transparent;
-}
-.media-row::-webkit-scrollbar-thumb {
-  background: rgba(229, 9, 20, 0.7); /* Netflix Red */
-  border-radius: 4px;
-}
-.media-row::-webkit-scrollbar-thumb:hover {
-    background: rgba(229, 9, 20, 1);
-}
 </file>
 
 <file path="src/main.jsx">
@@ -1545,6 +1123,485 @@ function DetailsPage() {
 export default DetailsPage;
 </file>
 
+<file path="src/services/streamApi.js">
+const STREAM_SERVER_URL = "https://dotflix.onrender.com/geturl";
+
+export async function sniffStream(embedUrl, signal) {
+  try {
+    const res = await fetch(STREAM_SERVER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: embedUrl }),
+      signal,
+    });
+
+    if (!res.ok) {
+      throw new Error("Server error while fetching stream.");
+    }
+
+    const data = await res.json();
+    return data.streamUrl;
+  } catch (err) {
+    if (err.name === "AbortError") {
+      throw new Error(
+        "⚠️ Server is restarting. Please wait 1 minute and try again."
+      );
+    }
+    throw new Error(`❌ Failed to fetch stream: ${err.message}`);
+  }
+}
+</file>
+
+<file path="src/services/tmbdApi.js">
+const API_KEY = "ad301b7cc82ffe19273e55e4d4206885";
+const BASE_URL = "https://api.themoviedb.org/3";
+
+async function fetchFromTMDb(endpoint) {
+  const url = `${BASE_URL}/${endpoint}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error(`Failed to fetch from TMDb: ${res.statusText}`);
+      return null;
+    }
+    return await res.json();
+  } catch (err) {
+    console.error("Error in fetchFromTMDb:", err);
+    return null;
+  }
+}
+
+export const searchMedia = (query) => {
+  return fetchFromTMDb(
+    `search/multi?api_key=${API_KEY}&query=${encodeURIComponent(
+      query
+    )}&language=en-US`
+  );
+};
+
+export const getMediaDetails = (type, id) => {
+  return fetchFromTMDb(`${type}/${id}?api_key=${API_KEY}&language=en-US`);
+};
+
+export const getSeasonDetails = (tvId, seasonNumber) => {
+  return fetchFromTMDb(
+    `tv/${tvId}/season/${seasonNumber}?api_key=${API_KEY}&language=en-US`
+  );
+};
+
+export const getTrendingMedia = () => {
+  // Changed from /day to /week
+  return fetchFromTMDb(`trending/all/week?api_key=${API_KEY}&language=en-US`);
+};
+
+export const getTopRatedMovies = () => {
+  // Changed from movie/top_rated to trending/movie/week for a weekly list
+  return fetchFromTMDb(`trending/movie/week?api_key=${API_KEY}&language=en-US`);
+};
+
+export const getTopRatedShows = () => {
+  // Changed from tv/top_rated to trending/tv/week for a weekly list
+  return fetchFromTMDb(`trending/tv/week?api_key=${API_KEY}&language=en-US`);
+};
+
+// Genre IDs can be found on the TMDB website. Examples:
+// Action: 28, Comedy: 35, Horror: 27, Sci-Fi: 878
+export const getMediaByGenre = (genreId) => {
+  return fetchFromTMDb(
+    `discover/movie?api_key=${API_KEY}&with_genres=${genreId}&language=en-US&sort_by=popularity.desc`
+  );
+};
+</file>
+
+<file path="index.html">
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image" href="/src/assets/lotus.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400..800&family=Bitcount+Single+Ink:wght@100..900&family=League+Gothic&family=Oswald:wght@200..700&display=swap"
+    rel="stylesheet">
+  <title>Dotflix | The GenV Streaming Site</title>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
+</file>
+
+<file path="package.json">
+{
+  "name": "dotflix_1",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "axios": "^1.12.2",
+    "embla-carousel-react": "^8.6.0",
+    "hls.js": "^1.6.13",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-icons": "^5.5.0",
+    "react-intersection-observer": "^9.16.0",
+    "react-router-dom": "^7.9.1",
+    "slugify": "^1.6.6",
+    "tailwindcss": "^4.1.13"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.3",
+    "eslint": "^9.36.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.4.0",
+    "vite": "^7.1.7"
+  }
+}
+</file>
+
+<file path="src/components/Hero.jsx">
+import React, { useState, useEffect, useCallback } from "react";
+import { getTrendingMedia } from "../services/tmbdApi";
+import { Link } from "react-router-dom";
+import { createSlug } from "../utils/slug";
+import { FaPlay, FaInfoCircle } from "react-icons/fa";
+import useEmblaCarousel from "embla-carousel-react";
+import Loader from "./Loader";
+
+function Hero() {
+  const [trending, setTrending] = useState([]);
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true });
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const fetchTrending = async () => {
+      const preloadImages = (urls) => {
+        urls.forEach((url) => {
+          const img = new Image();
+          img.src = url;
+        });
+      };
+
+      const data = await getTrendingMedia();
+      if (data?.results) {
+        const filtered = data.results
+          .filter(
+            (item) => item.backdrop_path && item.poster_path && item.overview
+          )
+          .slice(0, 7);
+        setTrending(filtered);
+
+        const backdropUrls = filtered.map(
+          (item) => `https://image.tmdb.org/t/p/w1280${item.backdrop_path}`
+        );
+        preloadImages(backdropUrls);
+      }
+    };
+
+    fetchTrending();
+  }, []);
+
+  const onSelect = useCallback(() => {
+    if (!emblaApi) return;
+    setCurrentIndex(emblaApi.selectedScrollSnap());
+  }, [emblaApi]);
+
+  useEffect(() => {
+    if (!emblaApi) return;
+
+    onSelect(); // fire once on mount
+    emblaApi.on("select", onSelect);
+
+    const autoplay = setInterval(() => {
+      emblaApi.scrollNext();
+    }, 5000);
+
+    return () => {
+      emblaApi.off("select", onSelect);
+      clearInterval(autoplay);
+    };
+  }, [emblaApi, onSelect]);
+
+  if (trending.length === 0) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-black">
+        <Loader />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="relative h-[90vh] md:h-screen w-full overflow-hidden cursor-grab select-none"
+      ref={emblaRef}
+    >
+      <div className="flex h-full">
+        {trending.map((item) => {
+          const backdropUrl = `https://image.tmdb.org/t/p/w1280${item.backdrop_path}`;
+          const posterUrl = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+          const title = item.title || item.name;
+          const slug = createSlug(item.id, title);
+
+          return (
+            <div className="flex-[0_0_100%] relative" key={item.id}>
+              {/* Background */}
+              <div
+                className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
+                style={{ backgroundImage: `url(${backdropUrl})` }}
+              >
+                <div className="absolute inset-0 bg-black/70 bg-gradient-to-t from-black via-transparent to-black/30" />
+              </div>
+
+              {/* Foreground content */}
+              <div className="relative z-10 flex h-full items-center justify-center px-6 md:px-12">
+                <div className="flex items-center justify-center gap-8 max-w-6xl w-full">
+                  {/* Left side: text */}
+                  <div className="max-w-xl text-white space-y-4 animate-fade-in">
+                    <h1 className="text-4xl md:text-6xl font-bold leading-tight">
+                      {title}
+                    </h1>
+                    <p className="text-gray-300 text-sm md:text-base line-clamp-3 select-text">
+                      {item.overview}
+                    </p>
+                    <div className="flex items-center gap-4 pt-4">
+                      <Link
+                        to={`/${item.media_type}/${slug}`}
+                        className="flex items-center gap-2 px-6 py-3 bg-white/90 text-black font-semibold rounded-lg hover:bg-white transition"
+                      >
+                        <FaPlay /> Watch Now
+                      </Link>
+                      <Link
+                        to={`/${item.media_type}/${slug}`}
+                        className="flex items-center gap-2 px-6 py-3 bg-gray-500/70 text-white font-semibold rounded-lg hover:bg-gray-500/90 transition"
+                      >
+                        <FaInfoCircle /> More Info
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Right side: thumbnail */}
+                  <div className="hidden md:block max-w-xs flex-shrink-0">
+                    <img
+                      src={posterUrl}
+                      alt={title}
+                      className="rounded-lg shadow-lg w-full"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Dots navigation */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
+        {trending.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => emblaApi && emblaApi.scrollTo(index)}
+            className={`w-3 h-3 rounded-full transition-all ${
+              currentIndex === index
+                ? "!bg-white"
+                : "bg-white/40 hover:bg-white/60"
+            }`}
+            aria-label={`Go to slide ${index + 1}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default Hero;
+</file>
+
+<file path="src/components/ResultsGrid.jsx">
+import React from "react";
+import { Link } from "react-router-dom";
+import { createSlug } from "../utils/slug";
+import RatingBadge from "./RatingBadge";
+
+function ResultsGrid({ results }) {
+  return (
+    <div>
+      <h2 className="text-xl font-bold mb-4">Results</h2>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
+        {results.map((r) => (
+          <Link
+            to={`/${r.media_type}/${createSlug(r.id, r.title || r.name)}`}
+            key={r.id}
+          >
+            <div className="relative bg-gray-800/40 rounded-lg overflow-hidden shadow-lg hover:scale-105 transition transform cursor-pointer">
+              {/* Rating Badge - positioned at top-left */}
+              <div className="absolute bottom-13 left-0 z-10">
+                <RatingBadge rating={r.vote_average} />
+              </div>
+
+              {/* Poster */}
+              {r.poster_path ? (
+                <img
+                  src={`https://image.tmdb.org/t/p/w300${r.poster_path}`}
+                  alt={r.title || r.name}
+                  className="w-full h-86 object-cover"
+                />
+              ) : (
+                <div className="w-full h-64 bg-gray-700 flex items-center justify-center text-gray-400 text-xs">
+                  No Image
+                </div>
+              )}
+
+              {/* Metadata overlay */}
+              <div className="absolute bottom-0 w-full bg-black/80 p-2 text-xs sm:text-sm">
+                <div className="flex items-end gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold truncate">
+                      {r.title || r.name}
+                    </h3>
+
+                    <div className="flex items-center justify-between text-gray-300 gap-x-2">
+                      {/* Year (movie: release_date | tv: first_air_date) */}
+                      {(r.release_date || r.first_air_date) && (
+                        <span>
+                          {new Date(
+                            r.release_date || r.first_air_date
+                          ).getFullYear()}
+                        </span>
+                      )}
+
+                      {/* Runtime (only for movies usually) */}
+                      {r.runtime && <span>{r.runtime} min</span>}
+
+                      {/* Genres */}
+                      {r.genres && r.genres.length > 0 && (
+                        <span className="truncate">
+                          {r.genres.map((g) => g.name).join(", ")}
+                        </span>
+                      )}
+
+                      {/* Media type */}
+                      <span className="italic text-gray-400">
+                        {r.media_type}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default ResultsGrid;
+</file>
+
+<file path="src/index.css">
+@import "tailwindcss";
+
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #121212;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*{
+  font-family: "Oswald", sans-serif;
+
+}
+
+body {
+    background-color: #121212;
+}
+
+a {
+  font-weight: 500;
+  text-decoration: inherit;
+}
+
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+/* Custom Scrollbar Styles for Media Rows */
+.media-row::-webkit-scrollbar {
+  height: 8px;
+}
+.media-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+.media-row::-webkit-scrollbar-thumb {
+  background: rgba(229, 9, 20, 0.7); /* Netflix Red */
+  border-radius: 4px;
+}
+.media-row::-webkit-scrollbar-thumb:hover {
+    background: rgba(229, 9, 20, 1);
+}
+</file>
+
 <file path="src/pages/Home.jsx">
 import React from "react";
 import { useInView } from "react-intersection-observer";
@@ -1591,7 +1648,7 @@ function Home() {
 
         <LazyLoad height={340} offset={200} placeholder={<Placeholder />}>
           <MediaRow
-            title="Top 10 Movies"
+            title="Weekly Top 10 Movies"
             fetchData={getTopRatedMovies}
             media_type="movie"
           />
@@ -1599,7 +1656,7 @@ function Home() {
 
         <LazyLoad height={340} offset={200} placeholder={<Placeholder />}>
           <MediaRow
-            title="Top 10 Shows"
+            title="Weekly Top 10 Shows"
             fetchData={getTopRatedShows}
             media_type="tv"
           />
@@ -1634,60 +1691,6 @@ function Home() {
 }
 
 export default Home;
-</file>
-
-<file path="src/services/streamApi.js">
-const STREAM_SERVER_URL = "https://dotflix.onrender.com/geturl";
-
-export async function sniffStream(embedUrl, signal) {
-  try {
-    const res = await fetch(STREAM_SERVER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: embedUrl }),
-      signal,
-    });
-
-    if (!res.ok) {
-      throw new Error("Server error while fetching stream.");
-    }
-
-    const data = await res.json();
-    return data.streamUrl;
-  } catch (err) {
-    if (err.name === "AbortError") {
-      throw new Error(
-        "⚠️ Server is restarting. Please wait 1 minute and try again."
-      );
-    }
-    throw new Error(`❌ Failed to fetch stream: ${err.message}`);
-  }
-}
-</file>
-
-<file path="index.html">
-<!doctype html>
-<html lang="en">
-
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image" href="/src/assets/lotus.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400..800&family=Bitcount+Single+Ink:wght@100..900&family=League+Gothic&family=Oswald:wght@200..700&display=swap"
-    rel="stylesheet">
-  <title>Dotflix | The GenV Streaming Site</title>
-</head>
-
-<body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
-</body>
-
-</html>
 </file>
 
 </files>
